@@ -91,13 +91,13 @@ function extractTrades(pages) {
 
 function updateHtml(trades) {
   const html = fs.readFileSync(HTML_PATH, "utf8");
-  const today = new Date().toISOString().slice(0, 10);
+  const syncedAt = new Date().toISOString(); // full timestamp, not just a date — needed to detect staleness
 
   const tradesLiteral = JSON.stringify(trades);
   const newBlock =
 `// SYNC_MARKER_START
-// Auto-updated every 5 minutes by .github/workflows/sync.yml — do not hand-edit between the markers.
-const DATA_AS_OF = "${today}";
+// Auto-updated by .github/workflows/sync.yml — do not hand-edit between the markers.
+const DATA_SYNCED_AT = "${syncedAt}";
 const TRADES = ${tradesLiteral};
 // SYNC_MARKER_END`;
 
@@ -107,7 +107,7 @@ const TRADES = ${tradesLiteral};
   }
   const updated = html.replace(re, newBlock);
   fs.writeFileSync(HTML_PATH, updated, "utf8");
-  console.log(`Wrote ${trades.length} trades into ${HTML_PATH} (as of ${today}).`);
+  console.log(`Wrote ${trades.length} trades into ${HTML_PATH} (synced at ${syncedAt}).`);
 }
 
 (async () => {
