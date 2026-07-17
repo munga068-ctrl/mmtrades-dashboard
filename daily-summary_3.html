@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Daily Summary</title>
+<style>
+  :root{
+    --ink:#14171c;
+    --muted:#6b7280;
+    --line:#e7e9ec;
+    --green:#0f8a4c;
+    --green-bg:#eaf7ef;
+    --red:#d1352b;
+    --red-bg:#fdeeed;
+    --accent:#2f6fed;
+    --panel:#fafbfc;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);
+    background:#fff;
+  }
+  .wrap{ padding:20px; max-width:1200px; margin:0 auto; }
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:16px; flex-wrap:wrap; gap:12px;
+  }
+  .title{ font-size:20px; font-weight:700; letter-spacing:-0.01em; }
+  .nav{ display:flex; align-items:center; gap:10px; }
+  .nav button{
+    border:1px solid var(--line); background:#fff; border-radius:8px;
+    width:32px; height:32px; cursor:pointer; font-size:15px; color:var(--ink);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .nav button:hover{ background:#f4f5f6; }
+  .nav .today{
+    width:auto; padding:0 12px; gap:6px; font-size:13px; font-weight:600;
+  }
+  .month-label{ font-weight:700; font-size:15px; min-width:110px; text-align:center; }
+  .summary-pill{
+    font-size:13px; color:var(--muted); display:flex; gap:14px; align-items:center;
+  }
+  .summary-pill b{ color:var(--ink); }
+  .pnl-pos{ color:var(--green); font-weight:700; }
+  .pnl-neg{ color:var(--red); font-weight:700; }
+
+  .layout{ display:flex; gap:22px; align-items:flex-start; }
+  .cal-col{ flex:1; min-width:0; }
+  .side-col{ width:290px; flex-shrink:0; }
+
+  .grid{
+    border:1px solid var(--line); border-radius:10px; overflow:hidden;
+  }
+  .dow-row{ display:grid; grid-template-columns:repeat(7,1fr); background:var(--panel); }
+  .dow-row div{
+    padding:8px 0; text-align:center; font-size:11px; font-weight:600;
+    color:var(--muted); text-transform:uppercase; letter-spacing:.04em;
+  }
+  .week-row{ display:grid; grid-template-columns:repeat(7,1fr); }
+  .day{
+    min-height:84px; border-top:1px solid var(--line); border-right:1px solid var(--line);
+    padding:8px; position:relative; transition:background .15s ease, box-shadow .15s ease;
+  }
+  .day:nth-child(7n){ border-right:none; }
+  .day:nth-child(7n+1), .day:nth-child(7n){ background-color:rgba(0,0,0,0.012); }
+  .day.blank{ background:#fcfcfd !important; color:#d5d8dd; }
+  .day.today{ background:#eef4ff; box-shadow:inset 0 0 0 1.5px var(--accent); }
+  .day:not(.blank):hover{ box-shadow:inset 0 0 0 1.5px rgba(0,0,0,0.08); }
+  .day .num{ font-size:13px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .day.today .num{ color:var(--accent); font-weight:700; }
+  .day .trades{ font-size:11px; color:var(--muted); margin-top:20px; letter-spacing:.01em; }
+  .day .amount{ font-size:14px; font-weight:700; margin-top:2px; font-variant-numeric:tabular-nums; letter-spacing:-0.01em; }
+  .day.win{ background:var(--green-bg); }
+  .day.win:hover{ box-shadow:inset 0 0 0 1.5px rgba(15,138,76,0.35); }
+  .day.win .amount{ color:var(--green); }
+  .day.loss{ background:var(--red-bg); }
+  .day.loss:hover{ box-shadow:inset 0 0 0 1.5px rgba(209,53,43,0.35); }
+  .day.loss .amount{ color:var(--red); }
+  .day.today.win, .day.today.loss{ box-shadow:inset 0 0 0 1.5px var(--accent); }
+
+  .side-title{ font-size:13px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:10px; }
+  .week-card{
+    border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:10px;
+  }
+  .week-card .wk-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+  .week-card .wk-name{ font-weight:700; font-size:13.5px; }
+  .week-card .wk-range{ font-size:11px; color:var(--muted); }
+  .week-card .wk-body{ display:flex; justify-content:space-between; font-size:12.5px; }
+  .week-card .no-trades{ font-size:12.5px; color:#b4b8bf; }
+  .loading{ font-size:12px; color:var(--muted); padding:2px 0 10px; }
+  .err{ font-size:12px; color:var(--red); padding:2px 0 10px; }
+  .synced{ font-size:11px; color:#a7abb2; padding:2px 0 10px; }
+  .layout{ animation:none; }
+  .layout.fade-in{ animation:fadeIn .25s ease; }
+  @keyframes fadeIn{ from{ opacity:0; transform:translateY(2px);} to{ opacity:1; transform:translateY(0);} }
+
+  @media (max-width:760px){
+    .layout{ flex-direction:column; }
+    .side-col{ width:100%; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="title">Daily Summary</div>
+    <div class="nav">
+      <button id="prevBtn">‹</button>
+      <div class="month-label" id="monthLabel">—</div>
+      <button id="nextBtn">›</button>
+      <button class="today" id="todayBtn">Today</button>
+    </div>
+    <div class="summary-pill" id="monthPill">Loading…</div>
+  </div>
+
+  <div id="statusLine" class="loading">Loading…</div>
+
+  <div class="layout">
+    <div class="cal-col">
+      <div class="dow-row">
+        <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+      </div>
+      <div id="calBody"></div>
+    </div>
+    <div class="side-col">
+      <div class="side-title">Weekly Summary</div>
+      <div id="weeklyBody"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---- Notion data source for MMTrades DASHBOARD ----
+const DATA_SOURCE_URL = "collection://2c1f7bb7-7d6d-81e3-b25f-000b608c1561";
+
+let viewDate = new Date(); // current month being viewed
+const todayStr = new Date().toISOString().slice(0,10);
+
+const monthLabelEl = document.getElementById('monthLabel');
+const calBody = document.getElementById('calBody');
+const weeklyBody = document.getElementById('weeklyBody');
+const monthPill = document.getElementById('monthPill');
+const statusLine = document.getElementById('statusLine');
+
+function fmtMoney(n){
+  const sign = n < 0 ? "-" : "";
+  return sign + "$" + Math.abs(n).toFixed(2);
+}
+
+function startOfGrid(year, month){
+  const first = new Date(year, month, 1);
+  const d = new Date(first);
+  d.setDate(d.getDate() - d.getDay());
+  return d;
+}
+function endOfGrid(year, month){
+  const last = new Date(year, month + 1, 0);
+  const d = new Date(last);
+  d.setDate(d.getDate() + (6 - d.getDay()));
+  return d;
+}
+function toISO(d){ return d.toISOString().slice(0,10); }
+
+// SYNC_MARKER_START
+// Auto-updated hourly by .github/workflows/sync.yml — do not hand-edit between the markers.
+const DATA_AS_OF = "2026-07-17";
+const TRADES = [
+  {"date":"2026-01-05","pnl":-67.18},{"date":"2026-01-06","pnl":208.73},{"date":"2026-01-07","pnl":-45.56},
+  {"date":"2026-01-07","pnl":-86.12},{"date":"2026-01-09","pnl":-156.24},{"date":"2026-01-09","pnl":-47.38},
+  {"date":"2026-01-12","pnl":26.02},{"date":"2026-01-13","pnl":18.44},{"date":"2026-01-13","pnl":-80.7},
+  {"date":"2026-01-13","pnl":-44.37},{"date":"2026-02-06","pnl":-50.73},{"date":"2026-02-06","pnl":-48},
+  {"date":"2026-02-10","pnl":-23.96},{"date":"2026-02-11","pnl":131.47},{"date":"2026-02-13","pnl":173.26},
+  {"date":"2026-02-19","pnl":-66.46},{"date":"2026-02-19","pnl":-80.76},{"date":"2026-02-23","pnl":70.69},
+  {"date":"2026-02-24","pnl":-48.09},{"date":"2026-02-24","pnl":-9.27},{"date":"2026-02-26","pnl":31.61},
+  {"date":"2026-02-27","pnl":-27.58},{"date":"2026-02-27","pnl":-61.94},{"date":"2026-03-09","pnl":-48.13},
+  {"date":"2026-03-11","pnl":145.03},{"date":"2026-03-18","pnl":1.74},{"date":"2026-03-23","pnl":-21.34},
+  {"date":"2026-04-09","pnl":150.48},{"date":"2026-04-10","pnl":-29.85},{"date":"2026-04-22","pnl":-22.78},
+  {"date":"2026-04-29","pnl":-40.22},{"date":"2026-05-04","pnl":-23.72},{"date":"2026-05-15","pnl":-23.74},
+  {"date":"2026-05-22","pnl":-38.47},{"date":"2026-05-28","pnl":-12.66},{"date":"2026-07-09","pnl":-48.79},
+  {"date":"2026-07-16","pnl":199.87}
+];
+// SYNC_MARKER_END
+
+async function fetchTrades(rangeStart, rangeEnd){
+  return TRADES.filter(t => t.date >= rangeStart && t.date <= rangeEnd);
+}
+
+function render(trades, year, month){
+  const byDate = {};
+  (trades || []).forEach(t => {
+    const key = (t.date || "").slice(0,10);
+    if(!key) return;
+    if(!byDate[key]) byDate[key] = { count:0, pnl:0 };
+    byDate[key].count += 1;
+    byDate[key].pnl += Number(t.pnl) || 0;
+  });
+
+  const gridStart = startOfGrid(year, month);
+  const gridEnd = endOfGrid(year, month);
+
+  // Build weeks
+  const weeks = [];
+  let cursor = new Date(gridStart);
+  while(cursor <= gridEnd){
+    const week = [];
+    for(let i=0;i<7;i++){
+      week.push(new Date(cursor));
+      cursor.setDate(cursor.getDate()+1);
+    }
+    weeks.push(week);
+  }
+
+  // Render calendar
+  calBody.innerHTML = "";
+  let monthPnl = 0, monthDays = 0;
+
+  weeks.forEach(week => {
+    const row = document.createElement('div');
+    row.className = 'week-row';
+    week.forEach(d => {
+      const inMonth = d.getMonth() === month;
+      const iso = toISO(d);
+      const cell = document.createElement('div');
+      cell.className = 'day' + (inMonth ? '' : ' blank') + (iso === todayStr ? ' today' : '');
+      const info = byDate[iso];
+      let inner = `<div class="num">${d.getDate()}</div>`;
+      if(inMonth && info){
+        const cls = info.pnl >= 0 ? 'win' : 'loss';
+        cell.classList.add(cls);
+        inner += `<div class="trades">${info.count} ⇄</div><div class="amount">${fmtMoney(info.pnl)}</div>`;
+        if(inMonth){ monthPnl += info.pnl; monthDays += 1; }
+      }
+      cell.innerHTML = inner;
+      row.appendChild(cell);
+    });
+    calBody.appendChild(row);
+  });
+
+  monthPill.innerHTML = `PnL: <span class="${monthPnl >= 0 ? 'pnl-pos' : 'pnl-neg'}">${fmtMoney(monthPnl)}</span> &nbsp;|&nbsp; Days: <b>${monthDays}</b>`;
+
+  // Weekly summary sidebar
+  weeklyBody.innerHTML = "";
+  const ordinals = ["One","Two","Three","Four","Five","Six"];
+  weeks.forEach((week, i) => {
+    const start = week[0], end = week[6];
+    const rangeLabel = `${start.toLocaleDateString('en-US',{month:'short',day:'numeric'})} - ${end.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`;
+    let pnl = 0, days = 0;
+    week.forEach(d => {
+      if(d.getMonth() !== month) return;
+      const iso = toISO(d);
+      if(byDate[iso]){ pnl += byDate[iso].pnl; days += 1; }
+    });
+    const card = document.createElement('div');
+    card.className = 'week-card';
+    if(days > 0){
+      card.innerHTML = `
+        <div class="wk-head"><span class="wk-name">Week ${ordinals[i] || i+1}</span><span class="wk-range">${rangeLabel}</span></div>
+        <div class="wk-body"><span>PnL: <b class="${pnl >= 0 ? 'pnl-pos':'pnl-neg'}">${fmtMoney(pnl)}</b></span><span>Days: <b>${days}</b></span></div>
+      `;
+    } else {
+      card.innerHTML = `
+        <div class="wk-head"><span class="wk-name">Week ${ordinals[i] || i+1}</span><span class="wk-range">${rangeLabel}</span></div>
+        <div class="no-trades">No trades</div>
+      `;
+    }
+    weeklyBody.appendChild(card);
+  });
+}
+
+async function loadMonth(){
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  monthLabelEl.textContent = viewDate.toLocaleDateString('en-US', {month:'long', year:'numeric'});
+  statusLine.textContent = "Loading…";
+  statusLine.className = "loading";
+  monthPill.textContent = "Loading…";
+  calBody.innerHTML = "";
+  weeklyBody.innerHTML = "";
+
+  const rangeStart = toISO(startOfGrid(year, month));
+  const rangeEnd = toISO(endOfGrid(year, month));
+
+  try{
+    const trades = await fetchTrades(rangeStart, rangeEnd);
+    if(trades === null){
+      statusLine.textContent = "Couldn't parse the response from Notion. Try again.";
+      statusLine.className = "err";
+      render([], year, month);
+      return;
+    }
+    statusLine.textContent = "Data as of " + new Date(DATA_AS_OF + "T00:00:00").toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) + " — ask Claude to refresh for the latest trades";
+    statusLine.className = "synced";
+    render(trades, year, month);
+    document.querySelector('.layout').classList.remove('fade-in');
+    void document.querySelector('.layout').offsetWidth; // restart animation
+    document.querySelector('.layout').classList.add('fade-in');
+  }catch(e){
+    console.error(e);
+    statusLine.textContent = "Something went wrong rendering this month.";
+    statusLine.className = "err";
+    render([], year, month);
+  }
+}
+
+document.getElementById('prevBtn').addEventListener('click', () => {
+  viewDate.setMonth(viewDate.getMonth() - 1);
+  loadMonth();
+});
+document.getElementById('nextBtn').addEventListener('click', () => {
+  viewDate.setMonth(viewDate.getMonth() + 1);
+  loadMonth();
+});
+document.getElementById('todayBtn').addEventListener('click', () => {
+  viewDate = new Date();
+  loadMonth();
+});
+
+loadMonth();
+</script>
+</body>
+</html>
