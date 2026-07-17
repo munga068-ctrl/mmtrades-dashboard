@@ -174,7 +174,33 @@
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script>
+// ---- Load Chart.js, trying a few mirrors in case one is blocked/unreachable
+// (e.g. by an ad-blocker, DNS filter, or a flaky shared connection) ----
+function loadScript(src){
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = () => resolve(true);
+    s.onerror = () => reject(new Error('failed to load ' + src));
+    document.head.appendChild(s);
+  });
+}
+const CHART_JS_MIRRORS = [
+  "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js",
+  "https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js",
+  "https://unpkg.com/chart.js@4.4.4/dist/chart.umd.min.js",
+];
+async function loadChartJs(){
+  for(const url of CHART_JS_MIRRORS){
+    try{
+      await loadScript(url);
+      if(typeof Chart !== 'undefined') return true;
+    }catch(e){ /* try next mirror */ }
+  }
+  return false;
+}
+</script>
 <script>
 // ---- Notion data source for MMTrades DASHBOARD ----
 const DATA_SOURCE_URL = "collection://2c1f7bb7-7d6d-81e3-b25f-000b608c1561";
@@ -294,7 +320,14 @@ let equityChartInstance = null;
 let radarChartInstance = null;
 
 function renderCharts(m){
-  if(typeof Chart === 'undefined') return; // Chart.js failed to load (e.g. offline) — skip gracefully
+  if(typeof Chart === 'undefined'){
+    // Chart.js failed to load from every mirror — show a visible message
+    // instead of leaving the canvases blank with no explanation.
+    document.querySelectorAll('.chart-body').forEach(el => {
+      el.innerHTML = '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);text-align:center;padding:0 12px;">Charts library couldn\'t load (network/ad-blocker may be blocking it). The calendar below is unaffected.</div>';
+    });
+    return;
+  }
 
   const eqLabels = m.equityCurve.map(p => p.date);
   const eqData = m.equityCurve.map(p => p.equity);
@@ -484,7 +517,7 @@ document.getElementById('todayBtn').addEventListener('click', () => {
 // Stats + charts are all-time and only need to render once (not on month navigation)
 const allTimeMetrics = computeMetrics(TRADES);
 renderStats(allTimeMetrics);
-renderCharts(allTimeMetrics);
+loadChartJs().then(() => renderCharts(allTimeMetrics));
 
 loadMonth();
 </script>
