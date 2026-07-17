@@ -96,7 +96,7 @@ function updateHtml(trades) {
   const tradesLiteral = JSON.stringify(trades);
   const newBlock =
 `// SYNC_MARKER_START
-// Auto-updated every 15 minutes by .github/workflows/sync.yml — do not hand-edit between the markers.
+// Auto-updated every 5 minutes by .github/workflows/sync.yml — do not hand-edit between the markers.
 const DATA_AS_OF = "${today}";
 const TRADES = ${tradesLiteral};
 // SYNC_MARKER_END`;
