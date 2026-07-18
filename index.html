@@ -3,6 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <title>Daily Summary</title>
+<script>
+// Applied before the stylesheet paints anything, so the page never flashes
+// the wrong theme on load.
+(function(){
+  try{
+    var saved = localStorage.getItem('mmtrades-theme');
+    var theme = saved || ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  }catch(e){ /* localStorage unavailable; defaults to light */ }
+})();
+</script>
 <style>
   :root{
     --ink:#14171c;
@@ -13,14 +24,57 @@
     --red:#d1352b;
     --red-bg:#fdeeed;
     --accent:#2f6fed;
+    --accent-bg:rgba(47,111,237,0.12);
     --panel:#fafbfc;
+    --bg:#ffffff;
+    --btn-bg:#ffffff;
+    --hover-bg:#f4f5f6;
+    --blank-bg:#fcfcfd;
+    --blank-color:#d5d8dd;
+    --today-bg:#eef4ff;
+    --badge-bg:#f0f1f3;
+    --synced-c:#a7abb2;
+    --stale-c:#e0a83b;
+    --zero-line:#c7cbd1;
+    --grid-line:#f0f1f3;
+    --knob-bg:#ffffff;
+    --alt-tint:rgba(0,0,0,0.012);
+  }
+  html[data-theme="dark"]{
+    --ink:#e7e9ee;
+    --muted:#9aa1ac;
+    --line:#2a2f38;
+    --green:#33c47a;
+    --green-bg:rgba(51,196,122,0.14);
+    --red:#f0635a;
+    --red-bg:rgba(240,99,90,0.14);
+    --accent:#6c93f5;
+    --accent-bg:rgba(108,147,245,0.16);
+    --panel:#171a1f;
+    --bg:#0f1115;
+    --btn-bg:#181b21;
+    --hover-bg:#20242b;
+    --blank-bg:#0d0f12;
+    --blank-color:#3a3f47;
+    --today-bg:rgba(108,147,245,0.14);
+    --badge-bg:#20242b;
+    --synced-c:#6b7280;
+    --stale-c:#e0a83b;
+    --zero-line:#3a3f47;
+    --grid-line:#22262d;
+    --knob-bg:#181b21;
+    --alt-tint:rgba(255,255,255,0.02);
   }
   *{box-sizing:border-box;}
+  .stat-card, .week-card, .day, .nav button, .day-badge, .count-chip, .amount-chip{
+    transition:background .2s ease, border-color .2s ease, color .2s ease;
+  }
   body{
     margin:0;
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
     color:var(--ink);
-    background:#fff;
+    background:var(--bg);
+    transition:background .2s ease, color .2s ease;
   }
   .wrap{ padding:20px; max-width:1200px; margin:0 auto; }
   .topbar{
@@ -30,11 +84,12 @@
   .title{ font-size:20px; font-weight:700; letter-spacing:-0.01em; }
   .nav{ display:flex; align-items:center; gap:10px; }
   .nav button{
-    border:1px solid var(--line); background:#fff; border-radius:8px;
+    border:1px solid var(--line); background:var(--btn-bg); border-radius:8px;
     width:32px; height:32px; cursor:pointer; font-size:15px; color:var(--ink);
     display:flex; align-items:center; justify-content:center;
   }
-  .nav button:hover{ background:#f4f5f6; }
+  .nav button:hover{ background:var(--hover-bg); }
+  #themeBtn{ font-size:15px; }
   .nav .today{
     width:auto; padding:0 12px; gap:6px; font-size:13px; font-weight:600;
   }
@@ -64,9 +119,9 @@
     padding:8px; position:relative; transition:background .15s ease, box-shadow .15s ease;
   }
   .day:nth-child(7n){ border-right:none; }
-  .day:nth-child(7n+1), .day:nth-child(7n){ background-color:rgba(0,0,0,0.012); }
-  .day.blank{ background:#fcfcfd !important; color:#d5d8dd; }
-  .day.today{ background:#eef4ff; box-shadow:inset 0 0 0 1.5px var(--accent); }
+  .day:nth-child(7n+1), .day:nth-child(7n){ background-color:var(--alt-tint); }
+  .day.blank{ background:var(--blank-bg) !important; color:var(--blank-color); }
+  .day.today{ background:var(--today-bg); box-shadow:inset 0 0 0 1.5px var(--accent); }
   .day:not(.blank):hover{ box-shadow:inset 0 0 0 1.5px rgba(0,0,0,0.08); }
   .day .num{ font-size:13px; color:var(--muted); font-variant-numeric:tabular-nums; }
   .day.today .num{ color:var(--accent); font-weight:700; }
@@ -91,12 +146,12 @@
   .week-card .wk-value.pnl-neg{ color:var(--red); }
   .day-badge{
     display:inline-block; font-size:10.5px; font-weight:500; color:var(--muted);
-    background:#f0f1f3; padding:2px 9px; border-radius:20px; align-self:flex-start;
+    background:var(--badge-bg); padding:2px 9px; border-radius:20px; align-self:flex-start;
   }
   .loading{ font-size:12px; color:var(--muted); padding:2px 0 10px; }
   .err{ font-size:12px; color:var(--red); padding:2px 0 10px; }
-  .synced{ font-size:11px; color:#a7abb2; padding:2px 0 10px; }
-  .stale{ font-size:11px; color:#e0a83b; padding:2px 0 10px; }
+  .synced{ font-size:11px; color:var(--synced-c); padding:2px 0 10px; }
+  .stale{ font-size:11px; color:var(--stale-c); padding:2px 0 10px; }
   .layout{ animation:none; }
   .layout.fade-in{ animation:fadeIn .25s ease; }
   @keyframes fadeIn{ from{ opacity:0; transform:translateY(2px);} to{ opacity:1; transform:translateY(0);} }
@@ -127,23 +182,33 @@
     font-size:17px; font-weight:700; letter-spacing:-0.01em;
   }
   .gauge-sub{ font-size:10px; color:var(--muted); margin-top:0; text-align:center; }
-  .winrate-legend{ display:flex; justify-content:space-between; width:100%; font-size:12px; font-weight:700; padding:0 6px; }
-  .winrate-legend .win{ color:var(--green); }
-  .winrate-legend .breakeven{ color:var(--accent); }
-  .winrate-legend .loss{ color:var(--red); }
+  .winrate-legend{ display:flex; justify-content:space-between; align-items:center; width:100%; padding:0 4px; }
+  .count-chip{
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width:26px; height:26px; padding:0 7px; border-radius:999px;
+    font-size:12px; font-weight:700;
+  }
+  .count-chip.win{ background:var(--green-bg); color:var(--green); }
+  .count-chip.breakeven{ background:var(--accent-bg); color:var(--accent); }
+  .count-chip.loss{ background:var(--red-bg); color:var(--red); }
 
   /* -- ring card (Avg Win/Loss) -- */
   .stat-card.ring-card{ display:flex; flex-direction:column; align-items:center; padding:14px 12px 12px; }
   .ring-card .stat-label{ align-self:flex-start; }
   .ring-wrap{ position:relative; width:78px; height:78px; border-radius:50%; margin:2px 0 8px; }
   .ring-hole{
-    position:absolute; inset:9px; background:#fff; border-radius:50%;
+    position:absolute; inset:9px; background:var(--knob-bg); border-radius:50%;
     display:flex; align-items:center; justify-content:center;
     font-size:16px; font-weight:700; letter-spacing:-0.01em;
   }
-  .ring-legend{ display:flex; justify-content:space-between; width:100%; font-size:11.5px; font-weight:700; gap:8px; }
-  .ring-legend .win{ color:var(--green); }
-  .ring-legend .loss{ color:var(--red); }
+  .ring-legend{ display:flex; justify-content:space-between; align-items:center; width:100%; gap:6px; }
+  .amount-chip{
+    display:inline-flex; align-items:center; justify-content:center;
+    height:24px; padding:0 10px; border-radius:999px;
+    font-size:11px; font-weight:700; white-space:nowrap;
+  }
+  .amount-chip.win{ background:var(--green-bg); color:var(--green); }
+  .amount-chip.loss{ background:var(--red-bg); color:var(--red); }
 
   .charts-row{ display:flex; gap:20px; margin-bottom:24px; align-items:stretch; }
   .chart-card{
@@ -175,6 +240,7 @@
       <div class="month-label" id="monthLabel">—</div>
       <button id="nextBtn">›</button>
       <button class="today" id="todayBtn">Today</button>
+      <button id="themeBtn" title="Toggle light/dark theme">🌙</button>
     </div>
     <div class="summary-pill" id="monthPill">Loading…</div>
   </div>
@@ -271,7 +337,7 @@ function toISO(d){ return d.toISOString().slice(0,10); }
 
 // SYNC_MARKER_START
 // Auto-updated by .github/workflows/sync.yml — do not hand-edit between the markers.
-const DATA_SYNCED_AT = "2026-07-18T19:00:24.882Z";
+const DATA_SYNCED_AT = "2026-07-17T23:50:24.705Z";
 const TRADES = [{"date":"2026-01-05","pnl":-67.18},{"date":"2026-01-06","pnl":208.73},{"date":"2026-01-07","pnl":-45.56},{"date":"2026-01-07","pnl":-86.12},{"date":"2026-01-09","pnl":-156.24},{"date":"2026-01-09","pnl":-47.38},{"date":"2026-01-12","pnl":26.02},{"date":"2026-01-13","pnl":18.44},{"date":"2026-01-13","pnl":-80.7},{"date":"2026-01-13","pnl":-44.37},{"date":"2026-02-06","pnl":-50.73},{"date":"2026-02-06","pnl":-48},{"date":"2026-02-10","pnl":-23.96},{"date":"2026-02-11","pnl":131.47},{"date":"2026-02-13","pnl":173.26},{"date":"2026-02-19","pnl":-80.76},{"date":"2026-02-19","pnl":-66.46},{"date":"2026-02-23","pnl":70.69},{"date":"2026-02-24","pnl":-48.09},{"date":"2026-02-24","pnl":-9.27},{"date":"2026-02-26","pnl":31.61},{"date":"2026-02-27","pnl":-27.58},{"date":"2026-02-27","pnl":-61.94},{"date":"2026-03-09","pnl":-48.13},{"date":"2026-03-11","pnl":145.03},{"date":"2026-03-18","pnl":1.74},{"date":"2026-03-23","pnl":-21.34},{"date":"2026-04-09","pnl":150.48},{"date":"2026-04-10","pnl":-29.85},{"date":"2026-04-22","pnl":-22.78},{"date":"2026-04-29","pnl":-40.22},{"date":"2026-05-04","pnl":-23.72},{"date":"2026-05-15","pnl":-23.74},{"date":"2026-05-22","pnl":-38.47},{"date":"2026-05-28","pnl":-12.66},{"date":"2026-07-09","pnl":-48.79},{"date":"2026-07-16","pnl":199.87},{"date":"2026-07-17","pnl":41.31}];
 // SYNC_MARKER_END
 
@@ -390,7 +456,7 @@ function makeGaugeSVG(value, min, max){
         </linearGradient>
       </defs>
       <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#${gid})" stroke-width="13" stroke-linecap="round"/>
-      <circle cx="${mx.toFixed(2)}" cy="${my.toFixed(2)}" r="8" fill="#fff" stroke="#14171c" stroke-width="2.5"/>
+      <circle cx="${mx.toFixed(2)}" cy="${my.toFixed(2)}" r="8" style="fill:var(--knob-bg); stroke:var(--ink);" stroke-width="2.5"/>
     </svg>
   `;
 }
@@ -463,9 +529,9 @@ function renderStats(m){
         <div class="gauge-value">${m.winRate.toFixed(1)}%</div>
       </div>
       <div class="winrate-legend">
-        <span class="win">${m.winCount}</span>
-        ${m.breakevenCount > 0 ? `<span class="breakeven">${m.breakevenCount}</span>` : ''}
-        <span class="loss">${m.lossCount}</span>
+        <span class="count-chip win">${m.winCount}</span>
+        ${m.breakevenCount > 0 ? `<span class="count-chip breakeven">${m.breakevenCount}</span>` : ''}
+        <span class="count-chip loss">${m.lossCount}</span>
       </div>
     </div>
   `;
@@ -477,8 +543,8 @@ function renderStats(m){
         <div class="ring-hole">${wl}</div>
       </div>
       <div class="ring-legend">
-        <span class="win">${fmtMoney(m.avgWin)}</span>
-        <span class="loss">${fmtMoney(m.avgLoss)}</span>
+        <span class="amount-chip win">${fmtMoney(m.avgWin)}</span>
+        <span class="amount-chip loss">${fmtMoney(m.avgLoss)}</span>
       </div>
     </div>
   `;
@@ -507,6 +573,13 @@ function renderStats(m){
 let equityChartInstance = null;
 let weekdayChartInstance = null;
 
+// Reads a CSS custom property's current resolved value, so canvas-drawn
+// chart colors follow the active light/dark theme instead of being frozen
+// to whichever theme was active when the page first loaded.
+function cv(name){
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
 function renderCharts(m){
   if(typeof Chart === 'undefined'){
     // Chart.js failed to load from every mirror — show a visible message
@@ -516,6 +589,12 @@ function renderCharts(m){
     });
     return;
   }
+
+  const mutedC = cv('--muted');
+  const gridC = cv('--grid-line');
+  const greenC = cv('--green');
+  const redC = cv('--red');
+  const zeroC = cv('--zero-line');
 
   // Insert an exact zero-crossing point between any two points that straddle the
   // zero line. Without this, a single segment can span from positive to negative
@@ -548,7 +627,7 @@ function renderCharts(m){
 
   // Colors each segment of the line/fill green when it's above the zero line and
   // red when it's below it, matching a win/loss-shaded cumulative P&L view.
-  const segmentColor = (ctx) => (ctx.p0.parsed.y >= 0 && ctx.p1.parsed.y >= 0) ? '#0f8a4c' : '#d1352b';
+  const segmentColor = (ctx) => (ctx.p0.parsed.y >= 0 && ctx.p1.parsed.y >= 0) ? greenC : redC;
   const segmentFill = (ctx) => (ctx.p0.parsed.y >= 0 && ctx.p1.parsed.y >= 0) ? greenFill : redFill;
 
   if(equityChartInstance) equityChartInstance.destroy();
@@ -559,7 +638,7 @@ function renderCharts(m){
       datasets: [
         {
           data: eqData,
-          borderColor: '#0f8a4c',
+          borderColor: greenC,
           fill: { target: { value: 0 } },
           backgroundColor: greenFill,
           segment: { borderColor: segmentColor, backgroundColor: segmentFill },
@@ -568,7 +647,7 @@ function renderCharts(m){
         {
           // Dashed reference line at zero
           data: eqData.map(() => 0),
-          borderColor: '#c7cbd1',
+          borderColor: zeroC,
           borderDash: [4,4],
           borderWidth: 1,
           fill: false,
@@ -581,8 +660,8 @@ function renderCharts(m){
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display:false }, tooltip: { filter: (item) => item.datasetIndex === 0, callbacks: { label: (ctx)=>'$'+ctx.parsed.y.toFixed(2) } } },
       scales: {
-        x: { ticks: { maxTicksLimit: 6, color:'#6b7280', font:{size:10} }, grid:{ display:false } },
-        y: { ticks: { color:'#6b7280', font:{size:10}, callback:(v)=>'$'+v }, grid:{ color:'#f0f1f3' } }
+        x: { ticks: { maxTicksLimit: 6, color:mutedC, font:{size:10} }, grid:{ display:false } },
+        y: { ticks: { color:mutedC, font:{size:10}, callback:(v)=>'$'+v }, grid:{ color:gridC } }
       }
     }
   });
@@ -603,8 +682,8 @@ function renderCharts(m){
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display:false }, tooltip: { callbacks: { label: (ctx)=>'$'+ctx.parsed.y.toFixed(2) } } },
       scales: {
-        x: { ticks: { color:'#6b7280', font:{size:11} }, grid:{ display:false } },
-        y: { ticks: { color:'#6b7280', font:{size:10}, callback:(v)=>'$'+v }, grid:{ color:'#f0f1f3' } }
+        x: { ticks: { color:mutedC, font:{size:11} }, grid:{ display:false } },
+        y: { ticks: { color:mutedC, font:{size:10}, callback:(v)=>'$'+v }, grid:{ color:gridC } }
       }
     }
   });
@@ -685,7 +764,45 @@ function render(trades, year, month){
     `;
     weeklyBody.appendChild(card);
   });
+
+  syncWeeklyHeights();
 }
+
+// The calendar's day cells can grow taller than their 84px minimum when a day
+// has a lot of content (trade count + P&L text), so the fixed-height weekly
+// cards drift out of alignment with their calendar rows over the course of a
+// month. This measures each rendered row/card pair and corrects it directly.
+function syncWeeklyHeights(){
+  const dowRow = document.querySelector('.dow-row');
+  const sideTitle = document.querySelector('.side-title');
+  const rowEls = calBody.querySelectorAll('.week-row');
+  const cardEls = weeklyBody.querySelectorAll('.week-card');
+  if(!rowEls.length || !cardEls.length) return;
+
+  // Match the header heights first so row 1 / card 1 start at the same Y.
+  if(dowRow && sideTitle){
+    sideTitle.style.paddingBottom = '';
+    const diff = dowRow.getBoundingClientRect().height - sideTitle.getBoundingClientRect().height;
+    if(diff > 0) sideTitle.style.paddingBottom = diff + 'px';
+  }
+
+  // Each card has an 8px margin-bottom (the visual gap between cards); the
+  // calendar rows have no gap between them, so subtract that gap from the
+  // card's height to keep each card's bottom edge lined up with its row's
+  // bottom edge (and the next row/card pair starting flush again).
+  const gap = 8;
+  rowEls.forEach((rowEl, i) => {
+    const card = cardEls[i];
+    if(!card) return;
+    const rowH = rowEl.getBoundingClientRect().height;
+    card.style.minHeight = Math.max(0, rowH - gap) + 'px';
+  });
+}
+
+window.addEventListener('resize', () => {
+  clearTimeout(window.__wkResizeTimer);
+  window.__wkResizeTimer = setTimeout(syncWeeklyHeights, 150);
+});
 
 async function loadMonth(){
   const year = viewDate.getFullYear();
@@ -732,6 +849,26 @@ document.getElementById('nextBtn').addEventListener('click', () => {
 document.getElementById('todayBtn').addEventListener('click', () => {
   viewDate = new Date();
   loadMonth();
+});
+
+// Theme toggle (light/dark). Initial theme is set by the tiny inline script
+// in <head> so the correct theme is applied before first paint (no flash).
+const themeBtn = document.getElementById('themeBtn');
+function applyThemeButtonIcon(){
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  themeBtn.textContent = isDark ? '☀️' : '🌙';
+}
+applyThemeButtonIcon();
+themeBtn.addEventListener('click', () => {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const next = isDark ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try{ localStorage.setItem('mmtrades-theme', next); }catch(e){ /* storage may be blocked; theme still applies for this session */ }
+  applyThemeButtonIcon();
+  // Canvas-drawn chart colors don't follow CSS automatically, so redraw them
+  // with the freshly-resolved theme colors.
+  if(typeof Chart !== 'undefined'){ renderCharts(allTimeMetrics); }
+  syncWeeklyHeights();
 });
 
 // Stats + charts are all-time and only need to render once (not on month navigation)
