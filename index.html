@@ -48,7 +48,7 @@
 
   .layout{ display:flex; gap:22px; align-items:flex-start; }
   .cal-col{ flex:1; min-width:0; }
-  .side-col{ width:290px; flex-shrink:0; }
+  .side-col{ width:230px; flex-shrink:0; }
 
   .grid{
     border:1px solid var(--line); border-radius:10px; overflow:hidden;
@@ -82,13 +82,17 @@
 
   .side-title{ font-size:13px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:10px; }
   .week-card{
-    border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:10px;
+    border:1px solid var(--line); border-radius:10px; padding:8px 12px; margin-bottom:8px;
+    min-height:84px; display:flex; flex-direction:column; justify-content:center;
   }
-  .week-card .wk-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
-  .week-card .wk-name{ font-weight:700; font-size:13.5px; }
-  .week-card .wk-range{ font-size:11px; color:var(--muted); }
-  .week-card .wk-body{ display:flex; justify-content:space-between; font-size:12.5px; }
-  .week-card .no-trades{ font-size:12.5px; color:#b4b8bf; }
+  .week-card .wk-name{ font-weight:600; font-size:11px; color:var(--ink); margin-bottom:2px; }
+  .week-card .wk-value{ font-size:15px; font-weight:700; letter-spacing:-0.005em; margin-bottom:4px; color:var(--ink); }
+  .week-card .wk-value.pnl-pos{ color:var(--green); }
+  .week-card .wk-value.pnl-neg{ color:var(--red); }
+  .day-badge{
+    display:inline-block; font-size:10.5px; font-weight:500; color:var(--muted);
+    background:#f0f1f3; padding:2px 9px; border-radius:20px; align-self:flex-start;
+  }
   .loading{ font-size:12px; color:var(--muted); padding:2px 0 10px; }
   .err{ font-size:12px; color:var(--red); padding:2px 0 10px; }
   .synced{ font-size:11px; color:#a7abb2; padding:2px 0 10px; }
@@ -104,7 +108,7 @@
 
   /* ---- Stats + charts (added) ---- */
   .stats-row{
-    display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:20px;
+    display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-bottom:20px;
   }
   .stat-card{
     border:1px solid var(--line); border-radius:10px; padding:14px 16px;
@@ -112,6 +116,34 @@
   .stat-card .stat-label{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; font-weight:600; margin-bottom:6px; }
   .stat-card .stat-value{ font-size:20px; font-weight:700; letter-spacing:-0.01em; }
   .stat-card .stat-sub{ font-size:11px; color:var(--muted); margin-top:3px; }
+
+  /* -- gauge card (Profit Factor) -- */
+  .stat-card.gauge-card{ display:flex; flex-direction:column; align-items:center; padding:10px 12px 12px; }
+  .gauge-card .stat-label{ align-self:flex-start; }
+  .gauge-wrap{ position:relative; width:100%; max-width:130px; }
+  .gauge-wrap svg{ width:100%; height:auto; display:block; }
+  .gauge-value{
+    position:absolute; left:0; right:0; bottom:2px; text-align:center;
+    font-size:17px; font-weight:700; letter-spacing:-0.01em;
+  }
+  .gauge-sub{ font-size:10px; color:var(--muted); margin-top:0; text-align:center; }
+  .winrate-legend{ display:flex; justify-content:space-between; width:100%; font-size:12px; font-weight:700; padding:0 6px; }
+  .winrate-legend .win{ color:var(--green); }
+  .winrate-legend .breakeven{ color:var(--accent); }
+  .winrate-legend .loss{ color:var(--red); }
+
+  /* -- ring card (Avg Win/Loss) -- */
+  .stat-card.ring-card{ display:flex; flex-direction:column; align-items:center; padding:14px 12px 12px; }
+  .ring-card .stat-label{ align-self:flex-start; }
+  .ring-wrap{ position:relative; width:78px; height:78px; border-radius:50%; margin:2px 0 8px; }
+  .ring-hole{
+    position:absolute; inset:9px; background:#fff; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px; font-weight:700; letter-spacing:-0.01em;
+  }
+  .ring-legend{ display:flex; justify-content:space-between; width:100%; font-size:11.5px; font-weight:700; gap:8px; }
+  .ring-legend .win{ color:var(--green); }
+  .ring-legend .loss{ color:var(--red); }
 
   .charts-row{ display:flex; gap:20px; margin-bottom:24px; align-items:stretch; }
   .chart-card{
@@ -125,6 +157,9 @@
   .chart-body canvas{ position:absolute; top:0; left:0; width:100% !important; height:100% !important; }
   .section-divider{ height:1px; background:var(--line); margin:24px 0; }
 
+  @media (max-width:1050px){
+    .stats-row{ grid-template-columns:repeat(3,1fr); }
+  }
   @media (max-width:900px){
     .stats-row{ grid-template-columns:repeat(2,1fr); }
     .charts-row{ flex-direction:column; }
@@ -236,7 +271,7 @@ function toISO(d){ return d.toISOString().slice(0,10); }
 
 // SYNC_MARKER_START
 // Auto-updated by .github/workflows/sync.yml — do not hand-edit between the markers.
-const DATA_SYNCED_AT = "2026-07-18T04:15:19.734Z";
+const DATA_SYNCED_AT = "2026-07-17T23:50:24.705Z";
 const TRADES = [{"date":"2026-01-05","pnl":-67.18},{"date":"2026-01-06","pnl":208.73},{"date":"2026-01-07","pnl":-45.56},{"date":"2026-01-07","pnl":-86.12},{"date":"2026-01-09","pnl":-156.24},{"date":"2026-01-09","pnl":-47.38},{"date":"2026-01-12","pnl":26.02},{"date":"2026-01-13","pnl":18.44},{"date":"2026-01-13","pnl":-80.7},{"date":"2026-01-13","pnl":-44.37},{"date":"2026-02-06","pnl":-50.73},{"date":"2026-02-06","pnl":-48},{"date":"2026-02-10","pnl":-23.96},{"date":"2026-02-11","pnl":131.47},{"date":"2026-02-13","pnl":173.26},{"date":"2026-02-19","pnl":-80.76},{"date":"2026-02-19","pnl":-66.46},{"date":"2026-02-23","pnl":70.69},{"date":"2026-02-24","pnl":-48.09},{"date":"2026-02-24","pnl":-9.27},{"date":"2026-02-26","pnl":31.61},{"date":"2026-02-27","pnl":-27.58},{"date":"2026-02-27","pnl":-61.94},{"date":"2026-03-09","pnl":-48.13},{"date":"2026-03-11","pnl":145.03},{"date":"2026-03-18","pnl":1.74},{"date":"2026-03-23","pnl":-21.34},{"date":"2026-04-09","pnl":150.48},{"date":"2026-04-10","pnl":-29.85},{"date":"2026-04-22","pnl":-22.78},{"date":"2026-04-29","pnl":-40.22},{"date":"2026-05-04","pnl":-23.72},{"date":"2026-05-15","pnl":-23.74},{"date":"2026-05-22","pnl":-38.47},{"date":"2026-05-28","pnl":-12.66},{"date":"2026-07-09","pnl":-48.79},{"date":"2026-07-16","pnl":199.87},{"date":"2026-07-17","pnl":41.31}];
 // SYNC_MARKER_END
 
@@ -281,6 +316,7 @@ function dailyAggregate(trades){
 function computeMetrics(trades){
   const wins = trades.filter(t => t.pnl > 0);
   const losses = trades.filter(t => t.pnl < 0);
+  const breakevenCount = trades.length - wins.length - losses.length;
   const netPnl = trades.reduce((s,t) => s + t.pnl, 0);
   const winRate = trades.length ? (wins.length / trades.length) * 100 : 0;
   const avgWin = wins.length ? wins.reduce((s,t)=>s+t.pnl,0) / wins.length : 0;
@@ -289,6 +325,7 @@ function computeMetrics(trades){
   const grossLoss = Math.abs(losses.reduce((s,t)=>s+t.pnl,0));
   const profitFactor = grossLoss > 0 ? grossWin / grossLoss : (grossWin > 0 ? Infinity : 0);
   const avgWinLossRatio = avgLoss !== 0 ? Math.abs(avgWin / avgLoss) : (avgWin > 0 ? Infinity : 0);
+  const expectancy = trades.length ? netPnl / trades.length : 0;
 
   const daily = dailyAggregate(trades);
   let equity = 0, peak = 0, maxDD = 0;
@@ -317,7 +354,7 @@ function computeMetrics(trades){
 
   const weekdayPnl = weekdayAggregate(trades);
 
-  return { netPnl, winRate, avgWin, avgLoss, profitFactor, avgWinLossRatio, maxDD, maxDDPct, recoveryFactor, streakCount, streakType, consistency, equityCurve, weekdayPnl, tradeCount: trades.length, dayCount: daily.length };
+  return { netPnl, winRate, avgWin, avgLoss, profitFactor, avgWinLossRatio, expectancy, maxDD, maxDDPct, recoveryFactor, streakCount, streakType, consistency, equityCurve, weekdayPnl, tradeCount: trades.length, dayCount: daily.length, winCount: wins.length, lossCount: losses.length, breakevenCount };
 }
 
 // Cumulative P&L for Mon–Fri (index 0=Mon .. 4=Fri), summed across all trades
@@ -333,21 +370,132 @@ function weekdayAggregate(trades){
   return sums;
 }
 
+// Builds a semicircle gauge (red -> yellow -> green) with a marker dot at the
+// position corresponding to `value` (clamped to [min,max]).
+function makeGaugeSVG(value, min, max){
+  const cx = 100, cy = 100, r = 80;
+  const f = Math.max(0, Math.min(1, (value - min) / (max - min)));
+  const theta = 180 - f * 180; // degrees: 180=left(min), 90=top(mid), 0=right(max)
+  const rad = theta * Math.PI / 180;
+  const mx = cx + r * Math.cos(rad);
+  const my = cy - r * Math.sin(rad);
+  const gid = 'pfGrad' + Math.random().toString(36).slice(2,8);
+  return `
+    <svg viewBox="0 0 200 116" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="${gid}" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#d1352b"/>
+          <stop offset="50%" stop-color="#e0a83b"/>
+          <stop offset="100%" stop-color="#0f8a4c"/>
+        </linearGradient>
+      </defs>
+      <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#${gid})" stroke-width="13" stroke-linecap="round"/>
+      <circle cx="${mx.toFixed(2)}" cy="${my.toFixed(2)}" r="8" fill="#fff" stroke="#14171c" stroke-width="2.5"/>
+    </svg>
+  `;
+}
+
+// Builds a semicircle arc split into win/breakeven/loss slices sized by trade count.
+function makeWinRateArcSVG(winCount, breakevenCount, lossCount){
+  const cx = 100, cy = 100, r = 80;
+  const total = (winCount + breakevenCount + lossCount) || 1;
+  function polar(theta){
+    const rad = theta * Math.PI / 180;
+    return { x: cx + r * Math.cos(rad), y: cy - r * Math.sin(rad) };
+  }
+  const segs = [
+    { count: winCount, color: '#0f8a4c' },
+    { count: breakevenCount, color: '#2f6fed' },
+    { count: lossCount, color: '#d1352b' },
+  ];
+  let theta = 180;
+  let paths = '';
+  segs.forEach(s => {
+    if(s.count <= 0) return;
+    const sweep = (s.count / total) * 180;
+    const nextTheta = theta - sweep;
+    const p1 = polar(theta), p2 = polar(nextTheta);
+    const large = sweep > 180 ? 1 : 0;
+    paths += `<path d="M ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}" fill="none" stroke="${s.color}" stroke-width="13" stroke-linecap="butt"/>`;
+    theta = nextTheta;
+  });
+  return `<svg viewBox="0 0 200 116" xmlns="http://www.w3.org/2000/svg">${paths}</svg>`;
+}
+
+// Builds a donut ring split between win-share and loss-share (by magnitude).
+function makeRingCSS(winShare){
+  const pct = Math.max(0, Math.min(100, winShare * 100));
+  return `background: conic-gradient(var(--green) 0% ${pct}%, var(--red) ${pct}% 100%);`;
+}
+
 function renderStats(m){
   const streakLabel = m.streakCount > 0 ? `${m.streakCount} ${m.streakType === 'win' ? 'winning' : 'losing'} day${m.streakCount>1?'s':''}` : '—';
   const streakClass = m.streakType === 'win' ? 'pnl-pos' : (m.streakType === 'loss' ? 'pnl-neg' : '');
   const pf = isFinite(m.profitFactor) ? m.profitFactor.toFixed(2) : '∞';
   const wl = isFinite(m.avgWinLossRatio) ? m.avgWinLossRatio.toFixed(2) : '∞';
 
-  const cards = [
+  const winMag = Math.abs(m.avgWin), lossMag = Math.abs(m.avgLoss);
+  const winShare = (winMag + lossMag) > 0 ? winMag / (winMag + lossMag) : 0.5;
+  const gaugeVal = isFinite(m.profitFactor) ? m.profitFactor : 3;
+
+  const simpleCards = [
     { label: 'Net P&L (all-time)', value: fmtMoney(m.netPnl), cls: m.netPnl>=0?'pnl-pos':'pnl-neg', sub: `${m.tradeCount} trades` },
-    { label: 'Win Rate', value: m.winRate.toFixed(1)+'%', cls: '', sub: `${m.dayCount} trading days` },
-    { label: 'Avg Win / Loss', value: wl, cls: '', sub: `${fmtMoney(m.avgWin)} / ${fmtMoney(m.avgLoss)}` },
-    { label: 'Profit Factor', value: pf, cls: '', sub: 'gross win ÷ gross loss' },
+    { label: 'Trade Expectancy', value: fmtMoney(m.expectancy), cls: m.expectancy>=0?'pnl-pos':'pnl-neg', sub: 'avg P&L per trade' },
     { label: 'Current Streak', value: streakLabel, cls: streakClass, sub: `max drawdown ${fmtMoney(-m.maxDD)}` },
   ];
 
-  statsRow.innerHTML = cards.map(c => `
+  const gaugeHtml = `
+    <div class="stat-card gauge-card">
+      <div class="stat-label">Profit Factor</div>
+      <div class="gauge-wrap">
+        ${makeGaugeSVG(gaugeVal, 0, 3)}
+        <div class="gauge-value">${pf}</div>
+      </div>
+      <div class="gauge-sub">gross win ÷ gross loss</div>
+    </div>
+  `;
+
+  const winRateHtml = `
+    <div class="stat-card gauge-card">
+      <div class="stat-label">Win Rate</div>
+      <div class="gauge-wrap">
+        ${makeWinRateArcSVG(m.winCount, m.breakevenCount, m.lossCount)}
+        <div class="gauge-value">${m.winRate.toFixed(1)}%</div>
+      </div>
+      <div class="winrate-legend">
+        <span class="win">${m.winCount}</span>
+        ${m.breakevenCount > 0 ? `<span class="breakeven">${m.breakevenCount}</span>` : ''}
+        <span class="loss">${m.lossCount}</span>
+      </div>
+    </div>
+  `;
+
+  const ringHtml = `
+    <div class="stat-card ring-card">
+      <div class="stat-label">Avg Win / Loss</div>
+      <div class="ring-wrap" style="${makeRingCSS(winShare)}">
+        <div class="ring-hole">${wl}</div>
+      </div>
+      <div class="ring-legend">
+        <span class="win">${fmtMoney(m.avgWin)}</span>
+        <span class="loss">${fmtMoney(m.avgLoss)}</span>
+      </div>
+    </div>
+  `;
+
+  // Order to mirror the reference layout: Net P&L, Trade Expectancy, Profit Factor,
+  // Win Rate, Avg Win/Loss, Current Streak.
+  statsRow.innerHTML = simpleCards.slice(0,2).map(c => `
+    <div class="stat-card">
+      <div class="stat-label">${c.label}</div>
+      <div class="stat-value ${c.cls}">${c.value}</div>
+      <div class="stat-sub">${c.sub}</div>
+    </div>
+  `).join('')
+  + gaugeHtml
+  + winRateHtml
+  + ringHtml
+  + simpleCards.slice(2).map(c => `
     <div class="stat-card">
       <div class="stat-label">${c.label}</div>
       <div class="stat-value ${c.cls}">${c.value}</div>
@@ -369,24 +517,69 @@ function renderCharts(m){
     return;
   }
 
-  const eqLabels = m.equityCurve.map(p => p.date);
-  const eqData = m.equityCurve.map(p => p.equity);
+  // Insert an exact zero-crossing point between any two points that straddle the
+  // zero line. Without this, a single segment can span from positive to negative
+  // and Chart.js colors that whole segment (and its fill) one color, creating a
+  // mismatched wedge of the wrong color right at the crossing.
+  function withZeroCrossings(points){
+    const out = [];
+    for(let i = 0; i < points.length; i++){
+      if(i > 0){
+        const prev = points[i-1], cur = points[i];
+        if((prev.equity > 0 && cur.equity < 0) || (prev.equity < 0 && cur.equity > 0)){
+          out.push({ date: prev.date, equity: 0 });
+        }
+      }
+      out.push(points[i]);
+    }
+    return out;
+  }
+  const eqPoints = withZeroCrossings(m.equityCurve);
+  const eqLabels = eqPoints.map(p => p.date);
+  const eqData = eqPoints.map(p => p.equity);
 
   const eqCtx = document.getElementById('equityChart').getContext('2d');
-  const gradient = eqCtx.createLinearGradient(0,0,0,160);
-  gradient.addColorStop(0, 'rgba(15,138,76,0.25)');
-  gradient.addColorStop(1, 'rgba(15,138,76,0.02)');
+  const greenFill = eqCtx.createLinearGradient(0,0,0,160);
+  greenFill.addColorStop(0, 'rgba(15,138,76,0.35)');
+  greenFill.addColorStop(1, 'rgba(15,138,76,0.03)');
+  const redFill = eqCtx.createLinearGradient(0,0,0,160);
+  redFill.addColorStop(0, 'rgba(209,53,43,0.03)');
+  redFill.addColorStop(1, 'rgba(209,53,43,0.35)');
+
+  // Colors each segment of the line/fill green when it's above the zero line and
+  // red when it's below it, matching a win/loss-shaded cumulative P&L view.
+  const segmentColor = (ctx) => (ctx.p0.parsed.y >= 0 && ctx.p1.parsed.y >= 0) ? '#0f8a4c' : '#d1352b';
+  const segmentFill = (ctx) => (ctx.p0.parsed.y >= 0 && ctx.p1.parsed.y >= 0) ? greenFill : redFill;
 
   if(equityChartInstance) equityChartInstance.destroy();
   equityChartInstance = new Chart(eqCtx, {
     type: 'line',
-    data: { labels: eqLabels, datasets: [{
-      data: eqData, borderColor: '#0f8a4c', backgroundColor: gradient, fill: true,
-      tension: 0.25, pointRadius: 0, borderWidth: 2,
-    }]},
+    data: {
+      labels: eqLabels,
+      datasets: [
+        {
+          data: eqData,
+          borderColor: '#0f8a4c',
+          fill: { target: { value: 0 } },
+          backgroundColor: greenFill,
+          segment: { borderColor: segmentColor, backgroundColor: segmentFill },
+          tension: 0.25, pointRadius: 0, borderWidth: 2,
+        },
+        {
+          // Dashed reference line at zero
+          data: eqData.map(() => 0),
+          borderColor: '#c7cbd1',
+          borderDash: [4,4],
+          borderWidth: 1,
+          fill: false,
+          pointRadius: 0,
+          tension: 0,
+        }
+      ]
+    },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display:false }, tooltip: { callbacks: { label: (ctx)=>'$'+ctx.parsed.y.toFixed(2) } } },
+      plugins: { legend: { display:false }, tooltip: { filter: (item) => item.datasetIndex === 0, callbacks: { label: (ctx)=>'$'+ctx.parsed.y.toFixed(2) } } },
       scales: {
         x: { ticks: { maxTicksLimit: 6, color:'#6b7280', font:{size:10} }, grid:{ display:false } },
         y: { ticks: { color:'#6b7280', font:{size:10}, callback:(v)=>'$'+v }, grid:{ color:'#f0f1f3' } }
@@ -476,27 +669,20 @@ function render(trades, year, month){
   weeklyBody.innerHTML = "";
   const ordinals = ["One","Two","Three","Four","Five","Six"];
   weeks.forEach((week, i) => {
-    const start = week[0], end = week[6];
-    const rangeLabel = `${start.toLocaleDateString('en-US',{month:'short',day:'numeric'})} - ${end.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`;
     let pnl = 0, days = 0;
     week.forEach(d => {
       if(d.getMonth() !== month) return;
       const iso = toISO(d);
       if(byDate[iso]){ pnl += byDate[iso].pnl; days += 1; }
     });
+    const valueCls = pnl > 0 ? 'pnl-pos' : (pnl < 0 ? 'pnl-neg' : '');
     const card = document.createElement('div');
     card.className = 'week-card';
-    if(days > 0){
-      card.innerHTML = `
-        <div class="wk-head"><span class="wk-name">Week ${ordinals[i] || i+1}</span><span class="wk-range">${rangeLabel}</span></div>
-        <div class="wk-body"><span>PnL: <b class="${pnl >= 0 ? 'pnl-pos':'pnl-neg'}">${fmtMoney(pnl)}</b></span><span>Days: <b>${days}</b></span></div>
-      `;
-    } else {
-      card.innerHTML = `
-        <div class="wk-head"><span class="wk-name">Week ${ordinals[i] || i+1}</span><span class="wk-range">${rangeLabel}</span></div>
-        <div class="no-trades">No trades</div>
-      `;
-    }
+    card.innerHTML = `
+      <div class="wk-name">Week ${ordinals[i] || i+1}</div>
+      <div class="wk-value ${valueCls}">${fmtMoney(pnl)}</div>
+      <span class="day-badge">${days} day${days === 1 ? '' : 's'}</span>
+    `;
     weeklyBody.appendChild(card);
   });
 }
