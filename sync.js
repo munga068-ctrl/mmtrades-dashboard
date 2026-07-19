@@ -173,6 +173,19 @@ function extractDurationTrades(journalPages, pnlMap) {
   return rows;
 }
 
+// If the journal side fails (e.g. the Notion integration hasn't been shared
+// with the PHASE 1 JOURNAL database), fall back to whatever DURATION_TRADES
+// is already embedded in the file rather than losing that chart's data.
+function extractExistingDurationTrades(html) {
+  const m = html.match(/const DURATION_TRADES = (\[[\s\S]*?\]);/);
+  if (!m) return [];
+  try {
+    return JSON.parse(m[1]);
+  } catch (e) {
+    return [];
+  }
+}
+
 function updateHtml(trades, durationTrades) {
   const html = fs.readFileSync(HTML_PATH, "utf8");
   const syncedAt = new Date().toISOString(); // full timestamp, not just a date — needed to detect staleness
@@ -201,8 +214,19 @@ const DURATION_TRADES = ${durationLiteral};
     const pages = await queryAllPages();
     const trades = extractTrades(pages);
     const pnlMap = buildDashboardPnlMap(pages);
-    const journalPages = await queryJournalPages();
-    const durationTrades = extractDurationTrades(journalPages, pnlMap);
+
+    // Kept separate from the block above on purpose: if the integration hasn't
+    // been shared with PHASE 1 JOURNAL (or that query fails for any reason),
+    // we still want the core trades/calendar sync below to succeed and commit.
+    let durationTrades;
+    try {
+      const journalPages = await queryJournalPages();
+      durationTrades = extractDurationTrades(journalPages, pnlMap);
+    } catch (journalErr) {
+      console.warn("Journal duration sync failed — keeping previous DURATION_TRADES and continuing:", journalErr.message);
+      durationTrades = extractExistingDurationTrades(fs.readFileSync(HTML_PATH, "utf8"));
+    }
+
     updateHtml(trades, durationTrades);
   } catch (err) {
     console.error("Sync failed:", err);
