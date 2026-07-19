@@ -10,6 +10,10 @@ if (!NOTION_TOKEN) {
 
 // This is the data source (collection) ID for the DASHBOARD database — not a secret, just an identifier.
 const DATA_SOURCE_ID = "2c1f7bb7-7d6d-81e3-b25f-000b608c1561";
+// The PHASE 1 JOURNAL database has per-trade entry/exit timestamps (the DASHBOARD
+// database only has a plain Date, no time). We join the two via its "FP 10K
+// DASHBOARD" relation to get { durationMin, pnl } pairs for the duration scatter chart.
+const JOURNAL_DATA_SOURCE_ID = "2c1f7bb7-7d6d-812c-b034-000bef8295e6";
 const HTML_PATH = "index.html";
 
 const HEADERS_BASE = {
@@ -89,16 +93,98 @@ function extractTrades(pages) {
   return trades;
 }
 
-function updateHtml(trades) {
+// Maps DASHBOARD page id -> realized PnL, so journal entries can be joined to a
+// real dollar amount via their "FP 10K DASHBOARD" relation.
+function buildDashboardPnlMap(pages) {
+  const map = {};
+  for (const page of pages) {
+    const pnlVal = page.properties?.["REALIZED PNL"]?.number;
+    if (pnlVal !== null && pnlVal !== undefined) {
+      map[page.id] = Math.round(pnlVal * 100) / 100;
+    }
+  }
+  return map;
+}
+
+async function queryJournalPages() {
+  const attempts = [
+    { url: `https://api.notion.com/v1/data_sources/${JOURNAL_DATA_SOURCE_ID}/query`, notionVersion: "2025-09-03" },
+    { url: `https://api.notion.com/v1/databases/${JOURNAL_DATA_SOURCE_ID}/query`, notionVersion: "2022-06-28" },
+  ];
+  let lastError = null;
+  for (const attempt of attempts) {
+    try {
+      const rows = await paginateJournalQuery(attempt.url, attempt.notionVersion);
+      console.log(`Fetched ${rows.length} journal rows via ${attempt.url}`);
+      return rows;
+    } catch (err) {
+      console.warn(`Journal attempt against ${attempt.url} failed: ${err.message}`);
+      lastError = err;
+    }
+  }
+  throw lastError || new Error("All Notion journal query attempts failed");
+}
+
+async function paginateJournalQuery(url, notionVersion) {
+  const headers = { ...HEADERS_BASE, "Notion-Version": notionVersion };
+  let results = [];
+  let cursor = undefined;
+
+  do {
+    const body = {
+      page_size: 100,
+      filter: { property: "ENTRY TIME ", date: { is_not_empty: true } },
+    };
+    if (cursor) body.start_cursor = cursor;
+
+    const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`HTTP ${res.status}: ${text.slice(0, 300)}`);
+    }
+    const data = await res.json();
+    results = results.concat(data.results || []);
+    cursor = data.has_more ? data.next_cursor : undefined;
+  } while (cursor);
+
+  return results;
+}
+
+// Needs an entry time that's a datetime *range* (start = entry, end = exit) to
+// compute a real duration, and a "FP 10K DASHBOARD" relation that resolves to a
+// page with a known PnL. Entries missing either are silently skipped rather
+// than guessed at.
+function extractDurationTrades(journalPages, pnlMap) {
+  const rows = [];
+  for (const page of journalPages) {
+    const props = page.properties || {};
+    const entryDate = props["ENTRY TIME "]?.date;
+    if (!entryDate?.start || !entryDate?.end) continue;
+    const start = new Date(entryDate.start);
+    const end = new Date(entryDate.end);
+    const durationMin = Math.round(((end - start) / 60000) * 100) / 100;
+    if (!isFinite(durationMin) || durationMin <= 0) continue;
+    const relIds = (props["FP 10K DASHBOARD"]?.relation || []).map((r) => r.id);
+    const matchId = relIds.find((id) => pnlMap[id] !== undefined);
+    if (matchId === undefined) continue;
+    rows.push({ durationMin, pnl: pnlMap[matchId] });
+  }
+  rows.sort((a, b) => a.durationMin - b.durationMin);
+  return rows;
+}
+
+function updateHtml(trades, durationTrades) {
   const html = fs.readFileSync(HTML_PATH, "utf8");
   const syncedAt = new Date().toISOString(); // full timestamp, not just a date — needed to detect staleness
 
   const tradesLiteral = JSON.stringify(trades);
+  const durationLiteral = JSON.stringify(durationTrades);
   const newBlock =
 `// SYNC_MARKER_START
 // Auto-updated by .github/workflows/sync.yml — do not hand-edit between the markers.
 const DATA_SYNCED_AT = "${syncedAt}";
 const TRADES = ${tradesLiteral};
+const DURATION_TRADES = ${durationLiteral};
 // SYNC_MARKER_END`;
 
   const re = /\/\/ SYNC_MARKER_START[\s\S]*?\/\/ SYNC_MARKER_END/;
@@ -107,14 +193,17 @@ const TRADES = ${tradesLiteral};
   }
   const updated = html.replace(re, newBlock);
   fs.writeFileSync(HTML_PATH, updated, "utf8");
-  console.log(`Wrote ${trades.length} trades into ${HTML_PATH} (synced at ${syncedAt}).`);
+  console.log(`Wrote ${trades.length} trades and ${durationTrades.length} duration points into ${HTML_PATH} (synced at ${syncedAt}).`);
 }
 
 (async () => {
   try {
     const pages = await queryAllPages();
     const trades = extractTrades(pages);
-    updateHtml(trades);
+    const pnlMap = buildDashboardPnlMap(pages);
+    const journalPages = await queryJournalPages();
+    const durationTrades = extractDurationTrades(journalPages, pnlMap);
+    updateHtml(trades, durationTrades);
   } catch (err) {
     console.error("Sync failed:", err);
     process.exit(1);
