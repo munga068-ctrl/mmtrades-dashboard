@@ -150,26 +150,32 @@ async function paginateJournalQuery(url, notionVersion) {
   return results;
 }
 
-// Needs an entry time that's a datetime *range* (start = entry, end = exit) to
-// compute a real duration, and a "FP 10K DASHBOARD" relation that resolves to a
-// page with a known PnL. Entries missing either are silently skipped rather
-// than guessed at.
+// Each row needs an ENTRY TIME with a time component and a "FP 10K DASHBOARD"
+// relation that resolves to a page with a known PnL. Entries missing either are
+// skipped rather than guessed at. Output per trade: { entryMin, pnl, durationMin? }
+// where entryMin is minutes-of-day in New York time. Phase 1 Journal times are
+// floating New York wall-clock, so hour:minute is read straight from the string
+// and any trailing Z/offset is ignored.
 function extractDurationTrades(journalPages, pnlMap) {
   const rows = [];
   for (const page of journalPages) {
     const props = page.properties || {};
     const entryDate = props["ENTRY TIME "]?.date;
-    if (!entryDate?.start || !entryDate?.end) continue;
-    const start = new Date(entryDate.start);
-    const end = new Date(entryDate.end);
-    const durationMin = Math.round(((end - start) / 60000) * 100) / 100;
-    if (!isFinite(durationMin) || durationMin <= 0) continue;
+    if (!entryDate?.start) continue;
+    const m = entryDate.start.match(/T(\d{2}):(\d{2})/);
+    if (!m) continue;
+    const entryMin = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
     const relIds = (props["FP 10K DASHBOARD"]?.relation || []).map((r) => r.id);
     const matchId = relIds.find((id) => pnlMap[id] !== undefined);
     if (matchId === undefined) continue;
-    rows.push({ durationMin, pnl: pnlMap[matchId] });
+    const row = { entryMin, pnl: pnlMap[matchId] };
+    if (entryDate.end) {
+      const durationMin = Math.round(((new Date(entryDate.end) - new Date(entryDate.start)) / 60000) * 100) / 100;
+      if (isFinite(durationMin) && durationMin > 0) row.durationMin = durationMin;
+    }
+    rows.push(row);
   }
-  rows.sort((a, b) => a.durationMin - b.durationMin);
+  rows.sort((a, b) => a.entryMin - b.entryMin);
   return rows;
 }
 
